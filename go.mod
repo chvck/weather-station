@@ -4,5 +4,6 @@ go 1.13
 
 require (
 	github.com/maciej/bme280 v0.2.0
+	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/exp v0.0.0-20191227195350-da58074b4299
 )

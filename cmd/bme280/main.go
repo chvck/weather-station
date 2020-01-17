@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/maciej/bme280"
 	"golang.org/x/exp/io/i2c"
 )
@@ -17,10 +18,9 @@ func main() {
 	driver := bme280.New(device)
 	err = driver.InitWith(bme280.ModeForced, bme280.Settings{
 		Filter:                  bme280.FilterOff,
-		Standby:                 bme280.StandByTime1000ms,
-		PressureOversampling:    bme280.Oversampling16x,
-		TemperatureOversampling: bme280.Oversampling16x,
-		HumidityOversampling:    bme280.Oversampling16x,
+		PressureOversampling:    bme280.Oversampling1x,
+		TemperatureOversampling: bme280.Oversampling1x,
+		HumidityOversampling:    bme280.Oversampling1x,
 	})
 
 	response, err := driver.Read()
