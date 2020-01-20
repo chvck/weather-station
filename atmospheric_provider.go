@@ -11,8 +11,7 @@ const DefaultBME280Addr = 0x76
 
 // AtmosphericSensorProvider provides a way to setup and collect atmospheric data readings.
 type AtmosphericSensorProvider interface {
-	Connect() error
-	Disconnect()
+	SensorProvider
 	Readings() (*AtmoshphericReadings, error)
 }
 

@@ -38,6 +38,7 @@ func main() {
 
 	stopSig := make(chan os.Signal, 1)
 	signal.Notify(stopSig, os.Interrupt)
+	defer signal.Stop(stopSig)
 
 	<-stopSig
 
