@@ -25,7 +25,7 @@ func init() {
 }
 
 func main() {
-	atmosProvider := NewBME280SensorProvider(DefaultBME280Addr)
+	atmosProvider := NewBME280SensorProvider(DefaultBME280Addr, DefaultI2CBusDevice)
 	err := atmosProvider.Connect()
 	if err != nil {
 		log.WithError(err).Panic("failed to connect to atmospherics provider")

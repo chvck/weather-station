@@ -6,8 +6,13 @@ import (
 	"golang.org/x/exp/io/i2c"
 )
 
-// DefaultBME280Addr is the default address to use for connecting to the BME280.
-const DefaultBME280Addr = 0x76
+const (
+	// DefaultBME280Addr is the default address to use for connecting to the BME280.
+	DefaultBME280Addr = 0x76
+
+	// DefaultI2CBusDevice is the default bus device to use with i2c.
+	DefaultI2CBusDevice = "/dev/i2c-1"
+)
 
 // AtmosphericSensorProvider provides a way to setup and collect atmospheric data readings.
 type AtmosphericSensorProvider interface {
@@ -25,20 +30,22 @@ type AtmoshphericReadings struct {
 // BME280SensorProvider provides temperature, pressure, and humidity readings using the BME280 chip.
 type BME280SensorProvider struct {
 	i2cAddr int
+	i2cBus  string
 
 	driver *bme280.Driver
 }
 
 // NewBME280SensorProvider creates and returns a BME280SensorProvider.
-func NewBME280SensorProvider(i2cAddr int) *BME280SensorProvider {
+func NewBME280SensorProvider(i2cAddr int, i2cBusDevice string) *BME280SensorProvider {
 	return &BME280SensorProvider{
 		i2cAddr: i2cAddr,
+		i2cBus:  i2cBusDevice,
 	}
 }
 
 // Connect initialises the BME280 connection and ensures that readings work correctly.
 func (bme *BME280SensorProvider) Connect() error {
-	device, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, bme.i2cAddr)
+	device, err := i2c.Open(&i2c.Devfs{Dev: bme.i2cBus}, bme.i2cAddr)
 	if err != nil {
 		return err
 	}
