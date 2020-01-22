@@ -49,6 +49,8 @@ func main() {
 	channel := flag.Int("channel", defaultChannel, "Channel to read on")
 	interval := flag.Duration("interval", 1*time.Second, "Time interval between readings")
 
+	flag.Parse()
+
 	err := gpio.Open()
 	if err != nil {
 		panic(err)

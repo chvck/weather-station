@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math"
 	"os"
 	"os/signal"
 	"sync"
@@ -13,25 +12,18 @@ import (
 )
 
 const (
-	defaultAnemRadius = 9
-	defaultInterval   = 5
-	defaultAnemFactor = 1.18
-	defaultPin        = gpio.GPIO5
+	defaultInterval = 5
+	defaultPin      = gpio.GPIO6
+	rainPerTip      = 0.2794
 )
 
 func main() {
 	pinNumber := flag.Int("pin", defaultPin, "GPIO pin on which to listen")
-	anemRadius := flag.Float64("radius", defaultAnemRadius, "Radius of the anemometer")
 	interval := flag.Int("interval", defaultInterval, "Time interval between readings")
-	anemFactor := flag.Float64("anem-factor", defaultAnemFactor, "The calibration anemometer factor")
 
 	flag.Parse()
 
-	anemCircum := (2 * math.Pi) * (*anemRadius)
 	intervalDuration := time.Duration(*interval) * time.Second
-
-	fmt.Printf("Running with radius=%f, interval=%d, anemometer factor=%f, pin=%d\n", *anemRadius, *interval,
-		*anemFactor, *pinNumber)
 
 	err := gpio.Open()
 	if err != nil {
@@ -76,11 +68,9 @@ func main() {
 			pinLock.Lock()
 			highs := pinHighs
 			pinLock.Unlock()
-			rotations := float64(highs) / 2 // anemometer triggers twice per rotation
-			distance := (anemCircum * rotations) / 100000
-			speed := (distance / float64(*interval)) * 3600 * (*anemFactor)
+			rainfall := float64(highs) * rainPerTip
 
-			fmt.Printf("Speed = %fkm/h\n", speed)
+			fmt.Printf("Rainfall = %.2fmm over %d seconds\n", rainfall, *interval)
 			resetHighs()
 		}
 	}
