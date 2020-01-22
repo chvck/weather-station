@@ -66,26 +66,20 @@ func main() {
 	signal.Notify(stopTimerSig, os.Interrupt)
 	defer signal.Stop(stopTimerSig)
 
-	waitCh := make(chan struct{})
+	for {
+		select {
+		case <-stopTimerSig:
+			return
+		case <-time.After(intervalDuration):
+			pinLock.Lock()
+			highs := pinHighs
+			pinLock.Unlock()
+			rotations := float64(highs) / 2 // anemometer triggers twice per rotation
+			distance := (anemCircum * rotations) / 100000
+			speed := (distance / float64(*interval)) * 3600 * (*anemFactor)
 
-	go func() {
-		for {
-			select {
-			case <-stopTimerSig:
-				waitCh <- struct{}{}
-			case <-time.After(intervalDuration):
-				pinLock.Lock()
-				highs := pinHighs
-				pinLock.Unlock()
-				rotations := float64(highs) / 2 // anemometer triggers twice per rotation
-				distance := (anemCircum * rotations) / 100000
-				speed := (distance / float64(*interval)) * 3600 * (*anemFactor)
-
-				fmt.Printf("Speed = %fkm/h\n", speed)
-				resetHighs()
-			}
+			fmt.Printf("Speed = %fkm/h\n", speed)
+			resetHighs()
 		}
-	}()
-
-	<-waitCh
+	}
 }
