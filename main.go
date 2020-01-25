@@ -45,7 +45,16 @@ func main() {
 		log.WithError(err).Panic("failed to connect to wind provider")
 	}
 
-	producer := NewSensorProducer(atmosProvider, windProvider)
+	rainProvider := NewSEN08942RainSensorProvider(SEN08942RainSensorProviderConfig{
+		PinNumber: 6,
+		Interval:  5 * time.Second,
+	})
+	err = rainProvider.Connect()
+	if err != nil {
+		log.WithError(err).Panic("failed to connect to rain provider")
+	}
+
+	producer := NewSensorProducer(atmosProvider, windProvider, rainProvider)
 	go func() {
 		producer.Run(readInterval)
 	}()
@@ -66,5 +75,6 @@ func main() {
 	wg.Wait()
 	atmosProvider.Disconnect()
 	windProvider.Disconnect()
+	rainProvider.Disconnect()
 	fmt.Println("Graceful shutdown completed")
 }

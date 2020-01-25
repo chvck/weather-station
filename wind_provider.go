@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/warthog618/gpio"
 	"github.com/warthog618/gpio/spi/mcp3w0c"
@@ -111,7 +113,7 @@ func NewSEN08942WindSensorProvider(config SEN08942WindSensorProviderConfig) *SEN
 // Connect sets up the connections to pins and creates watchers.
 func (wr *SEN08942WindSensorProvider) Connect() error {
 	err := gpio.Open()
-	if err != nil {
+	if err != nil && !errors.Is(err, gpio.ErrAlreadyOpen) {
 		return err
 	}
 
@@ -155,7 +157,7 @@ func (wr *SEN08942WindSensorProvider) Disconnect() {
 	wr.pinLock.Unlock()
 	wr.adc.Close()
 	err := gpio.Close()
-	if err != nil {
+	if err != nil && !errors.Is(err, unix.EINVAL) { // We're using gpio in 2 places and closing it twice causes EINVAL
 		log.WithError(err).
 			WithField("component", "wind provider").
 			Error("gpio failed to close")

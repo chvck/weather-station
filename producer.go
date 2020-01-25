@@ -11,21 +11,24 @@ import (
 type SensorProducer struct {
 	atmosProvider AtmosphericSensorProvider
 	windProvider  WindSensorProvider
+	rainProvider  RainSensorProvider
 	stopCh        chan struct{}
 	stoppedCh     chan struct{}
 }
 
 // NewSensorProducer creates and returns a SensorProducer.
-func NewSensorProducer(atmosProvider AtmosphericSensorProvider, windProvider WindSensorProvider) *SensorProducer {
+func NewSensorProducer(atmosProvider AtmosphericSensorProvider, windProvider WindSensorProvider,
+	rainProvider RainSensorProvider) *SensorProducer {
 	return &SensorProducer{
 		atmosProvider: atmosProvider,
 		windProvider:  windProvider,
+		rainProvider:  rainProvider,
 		stopCh:        make(chan struct{}),
 		stoppedCh:     make(chan struct{}),
 	}
 }
 
-func (sp *SensorProducer) poll() (*AtmoshphericReadings, *WindReadings) {
+func (sp *SensorProducer) poll() (*AtmoshphericReadings, *WindReadings, *RainReadings) {
 	atmosReadings, err := sp.atmosProvider.Readings()
 	if err != nil {
 		log.WithError(err).WithField("event", "atmospheric readings")
@@ -36,7 +39,12 @@ func (sp *SensorProducer) poll() (*AtmoshphericReadings, *WindReadings) {
 		log.WithError(err).WithField("event", "wind readings")
 	}
 
-	return atmosReadings, windReadings
+	rainReadings, err := sp.rainProvider.Readings()
+	if err != nil {
+		log.WithError(err).WithField("event", "rain readings")
+	}
+
+	return atmosReadings, windReadings, rainReadings
 }
 
 // Run starts the collector for gathering and saving readings.
@@ -49,12 +57,13 @@ func (sp *SensorProducer) Run(interval time.Duration) {
 		case <-time.After(interval):
 		}
 
-		atmosReadings, windReadings := sp.poll()
+		atmosReadings, windReadings, rainReadings := sp.poll()
 
 		fmt.Printf("Humidity: %f, Temperature: %f, Pressure: %f\n", atmosReadings.Humidity, atmosReadings.Temperature,
 			atmosReadings.Pressure)
 		fmt.Printf("Wind speed: %f, Direction: %f, Gust: %f\n", windReadings.Speed, windReadings.Direction,
 			windReadings.Gust)
+		fmt.Printf("Railfall Total: %f\n", rainReadings.Rainfall)
 	}
 }
 
