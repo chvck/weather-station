@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const readInterval = 5 * time.Second
+const readInterval = 30 * time.Second
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
@@ -31,7 +31,21 @@ func main() {
 		log.WithError(err).Panic("failed to connect to atmospherics provider")
 	}
 
-	producer := NewSensorProducer(atmosProvider)
+	windProvider := NewSEN08942WindSensorProvider(SEN08942WindSensorProviderConfig{
+		AnemPinNumber:     5,
+		AnemInterval:      5 * time.Second,
+		VaneCSPinNumber:   8,
+		VaneDOutPinNumber: 9,
+		VaneDInPinNumber:  10,
+		VaneClkPinNumber:  11,
+		VaneChannel:       0,
+	})
+	err = windProvider.Connect()
+	if err != nil {
+		log.WithError(err).Panic("failed to connect to wind provider")
+	}
+
+	producer := NewSensorProducer(atmosProvider, windProvider)
 	go func() {
 		producer.Run(readInterval)
 	}()
@@ -51,5 +65,6 @@ func main() {
 
 	wg.Wait()
 	atmosProvider.Disconnect()
+	windProvider.Disconnect()
 	fmt.Println("Graceful shutdown completed")
 }

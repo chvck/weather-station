@@ -76,7 +76,7 @@ func main() {
 			return
 		case <-time.After(*interval):
 			reading := adc.Read(*channel)
-			voltage := float64(reading) / 1024 * 3.3
+			voltage := float64(reading) / 1023 * 3.3
 			voltageString := fmt.Sprintf("%.1f", voltage)
 			degrees, ok := voltsToDegrees[voltageString]
 			if !ok {
