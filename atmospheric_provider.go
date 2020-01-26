@@ -59,6 +59,15 @@ func (bme *BME280SensorProvider) Connect() error {
 		TemperatureOversampling: bme280.Oversampling1x,
 		HumidityOversampling:    bme280.Oversampling1x,
 	})
+	if err != nil {
+		if deviceErr := device.Close(); deviceErr != nil {
+			log.WithError(deviceErr).
+				WithField("component", "atmospheric provider").
+				Error("device failed to close")
+		}
+
+		return err
+	}
 
 	// Check that a read succeeds on the driver
 	_, err = driver.Read()
