@@ -22,6 +22,9 @@ func main() {
 		TemperatureOversampling: bme280.Oversampling1x,
 		HumidityOversampling:    bme280.Oversampling1x,
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	response, err := driver.Read()
 	if err != nil {
