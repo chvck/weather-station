@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chvck/weatherstn"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,13 +27,13 @@ func init() {
 }
 
 func main() {
-	atmosProvider := NewBME280SensorProvider(DefaultBME280Addr, DefaultI2CBusDevice)
+	atmosProvider := weatherstn.NewBME280SensorProvider(weatherstn.DefaultBME280Addr, weatherstn.DefaultI2CBusDevice)
 	err := atmosProvider.Connect()
 	if err != nil {
 		log.WithError(err).Panic("failed to connect to atmospherics provider")
 	}
 
-	windProvider := NewSEN08942WindSensorProvider(SEN08942WindSensorProviderConfig{
+	windProvider := weatherstn.NewSEN08942WindSensorProvider(weatherstn.SEN08942WindSensorProviderConfig{
 		AnemPinNumber:     5,
 		AnemInterval:      5 * time.Second,
 		VaneCSPinNumber:   8,
@@ -45,7 +47,7 @@ func main() {
 		log.WithError(err).Panic("failed to connect to wind provider")
 	}
 
-	rainProvider := NewSEN08942RainSensorProvider(SEN08942RainSensorProviderConfig{
+	rainProvider := weatherstn.NewSEN08942RainSensorProvider(weatherstn.SEN08942RainSensorProviderConfig{
 		PinNumber: 6,
 		Interval:  5 * time.Second,
 	})
@@ -54,7 +56,7 @@ func main() {
 		log.WithError(err).Panic("failed to connect to rain provider")
 	}
 
-	producer := NewSensorProducer(atmosProvider, windProvider, rainProvider)
+	producer := weatherstn.NewSensorProducer(atmosProvider, windProvider, rainProvider)
 	go func() {
 		producer.Run(readInterval)
 	}()

@@ -1,4 +1,4 @@
-module github.com/chvck/weather-station
+module github.com/chvck/weatherstn
 
 go 1.13
 

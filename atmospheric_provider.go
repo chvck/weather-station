@@ -1,4 +1,4 @@
-package main
+package weatherstn
 
 import (
 	"github.com/maciej/bme280"

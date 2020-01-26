@@ -27,7 +27,7 @@ test:
 validate: test checkfmt checkerrs checkvet checkiea checklint
 
 build:
-	env GOOS=linux GOARCH=arm GOARM=7 go build -o weather-station .
+	env GOOS=linux GOARCH=arm GOARM=7 go build -o weather-station ./cmd/weather_station/
 
 deploy: build
 	scp weather-station ${STNUSER}@${STNHOST}:~/
