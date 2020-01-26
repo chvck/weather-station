@@ -12,6 +12,7 @@ import (
 	"github.com/warthog618/gpio"
 )
 
+// RainfallMMPerTip is the amount of rain in mm that corresponds to a single bucket sensor tip.
 const RainfallMMPerTip = 0.02794
 
 // RainSensorProvider provides a way to setup and collect rain data readings.
@@ -25,6 +26,7 @@ type RainReadings struct {
 	Rainfall float64 // mm
 }
 
+// SEN08942RainSensorProvider uses the SEN08942 weather kit to provide rain sensor readings.
 type SEN08942RainSensorProvider struct {
 	pin *gpio.Pin
 
@@ -41,12 +43,13 @@ type SEN08942RainSensorProvider struct {
 	haltedCh chan struct{}
 }
 
-// SEN08942SensorProviderConfig is used for setup of the SEN08942.
+// SEN08942RainSensorProviderConfig is used for setup of the SEN08942RainSensorProvider.
 type SEN08942RainSensorProviderConfig struct {
 	PinNumber int
 	Interval  time.Duration
 }
 
+// NewSEN08942RainSensorProvider returns a new SEN08942RainSensorProvider.
 func NewSEN08942RainSensorProvider(config SEN08942RainSensorProviderConfig) *SEN08942RainSensorProvider {
 	return &SEN08942RainSensorProvider{
 		pinNumber: config.PinNumber,
@@ -57,6 +60,7 @@ func NewSEN08942RainSensorProvider(config SEN08942RainSensorProviderConfig) *SEN
 	}
 }
 
+// Connect sets up the connections to pins and creates watchers.
 func (rsp *SEN08942RainSensorProvider) Connect() error {
 	err := gpio.Open()
 	if err != nil && !errors.Is(err, gpio.ErrAlreadyOpen) {

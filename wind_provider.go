@@ -15,13 +15,20 @@ import (
 )
 
 const (
-	SEN08942AnemFactor   = 1.18
-	SEN08942AnemCircum   = (2 * math.Pi) * 9.0
-	SEN08942Voltage      = 3.3
+	// SEN08942AnemFactor is the calibration factor for the anemometer.
+	SEN08942AnemFactor = 1.18
+
+	// SEN08942AnemCircum is the circumference of the anemometer.
+	SEN08942AnemCircum = (2 * math.Pi) * 9.0
+
+	// SEN08942Voltage is the voltage supplied to the wind vane.
+	SEN08942Voltage = 3.3
+
+	// SEN08942NumADCValues is the number of values that can be reported by the wind vane.
 	SEN08942NumADCValues = 1023 // The value returned is 0-1023 where 1023 = 3.3.
 
-	CMInKM     = 100000.0
-	SecsInHour = 3600
+	cmInKM     = 100000.0
+	secsInHour = 3600
 )
 
 var voltsToDegrees = map[string]float32{
@@ -235,8 +242,8 @@ func (wr *SEN08942WindSensorProvider) monitorWindSpeed() {
 		wr.pinLock.Unlock()
 
 		rotations := float64(highs) / 2 // Anemometer triggers twice per rotation
-		distance := (SEN08942AnemCircum * rotations) / CMInKM
-		speed := (distance / (float64(wr.anemInterval / time.Second))) * SecsInHour * SEN08942AnemFactor
+		distance := (SEN08942AnemCircum * rotations) / cmInKM
+		speed := (distance / (float64(wr.anemInterval / time.Second))) * secsInHour * SEN08942AnemFactor
 
 		wr.speedsLock.Lock()
 		wr.totalSpeed += speed
