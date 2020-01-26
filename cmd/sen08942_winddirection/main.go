@@ -55,7 +55,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer gpio.Close()
+	defer func() {
+		err = gpio.Close()
+		fmt.Printf("failed to close gpio: %v\n", err)
+	}()
 
 	adc := mcp3w0c.NewMCP3008(
 		*clock,
