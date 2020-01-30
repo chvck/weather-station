@@ -1,11 +1,18 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/chvck/weatherstn"
 
@@ -27,6 +34,22 @@ func init() {
 }
 
 func main() {
+	migrations := flag.Int("migrations", 0, "specifies to run n migrations (can be negative) and then exit")
+	migrateAll := flag.Bool("migrateall", false, "specifies to run all migrations and then exit")
+	flag.Parse()
+
+	if *migrations != 0 || *migrateAll {
+		if *migrations != 0 && *migrateAll {
+			panic("migrations and migrateall cannot be run together")
+		}
+		err := doMigrate("weather", "migrations", *migrations, *migrateAll)
+		if err != nil {
+			panic(err)
+		}
+
+		return
+	}
+
 	atmosProvider := weatherstn.NewBME280SensorProvider(weatherstn.DefaultBME280Addr, weatherstn.DefaultI2CBusDevice)
 	err := atmosProvider.Connect()
 	if err != nil {
@@ -56,7 +79,14 @@ func main() {
 		log.WithError(err).Panic("failed to connect to rain provider")
 	}
 
-	producer := weatherstn.NewSensorProducer(atmosProvider, windProvider, rainProvider)
+	db, err := sqlx.Open("sqlite3", "weather")
+	if err != nil {
+		log.WithError(err).Panic("failed to connect to datastore")
+	}
+
+	datastore := weatherstn.NewSqliteDataStore(db)
+
+	producer := weatherstn.NewSensorProducer(atmosProvider, windProvider, rainProvider, datastore)
 	go func() {
 		producer.Run(readInterval)
 	}()
@@ -79,4 +109,28 @@ func main() {
 	windProvider.Disconnect()
 	rainProvider.Disconnect()
 	fmt.Println("Graceful shutdown completed")
+}
+
+func doMigrate(dbPath, migrationsPath string, n int, all bool) error {
+	m, err := migrate.New(
+		"file://"+migrationsPath,
+		"sqlite3://"+dbPath)
+	if err != nil {
+		return err
+	}
+
+	if all {
+		err = m.Up()
+		if err != nil {
+			return err
+		}
+	}
+	if n != 0 {
+		err = m.Steps(n)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -39,7 +39,9 @@ func main() {
 	}
 	defer func() {
 		err = gpio.Close()
-		fmt.Printf("failed to close gpio: %v\n", err)
+		if err != nil {
+			fmt.Printf("failed to close gpio: %v\n", err)
+		}
 	}()
 
 	pin := gpio.NewPin(*pinNumber)

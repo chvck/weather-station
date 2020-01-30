@@ -1,7 +1,6 @@
 package weatherstn
 
 import (
-	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,39 +11,44 @@ type SensorProducer struct {
 	atmosProvider AtmosphericSensorProvider
 	windProvider  WindSensorProvider
 	rainProvider  RainSensorProvider
+	datastore     DataStore
 	stopCh        chan struct{}
 	stoppedCh     chan struct{}
 }
 
 // NewSensorProducer creates and returns a SensorProducer.
 func NewSensorProducer(atmosProvider AtmosphericSensorProvider, windProvider WindSensorProvider,
-	rainProvider RainSensorProvider) *SensorProducer {
+	rainProvider RainSensorProvider, store DataStore) *SensorProducer {
 	return &SensorProducer{
 		atmosProvider: atmosProvider,
 		windProvider:  windProvider,
 		rainProvider:  rainProvider,
+		datastore:     store,
 		stopCh:        make(chan struct{}),
 		stoppedCh:     make(chan struct{}),
 	}
 }
 
-func (sp *SensorProducer) poll() (*AtmoshphericReadings, *WindReadings, *RainReadings) {
+func (sp *SensorProducer) poll() (AtmoshphericReadings, WindReadings, RainReadings) {
 	atmosReadings, err := sp.atmosProvider.Readings()
 	if err != nil {
+		atmosReadings = &AtmoshphericReadings{}
 		log.WithError(err).WithField("event", "atmospheric readings")
 	}
 
 	windReadings, err := sp.windProvider.Readings()
 	if err != nil {
+		windReadings = &WindReadings{}
 		log.WithError(err).WithField("event", "wind readings")
 	}
 
 	rainReadings, err := sp.rainProvider.Readings()
 	if err != nil {
+		rainReadings = &RainReadings{}
 		log.WithError(err).WithField("event", "rain readings")
 	}
 
-	return atmosReadings, windReadings, rainReadings
+	return *atmosReadings, *windReadings, *rainReadings
 }
 
 // Run starts the collector for gathering and saving readings.
@@ -57,13 +61,28 @@ func (sp *SensorProducer) Run(interval time.Duration) {
 		case <-time.After(interval):
 		}
 
+		t := time.Now()
 		atmosReadings, windReadings, rainReadings := sp.poll()
 
-		fmt.Printf("Humidity: %f, Temperature: %f, Pressure: %f\n", atmosReadings.Humidity, atmosReadings.Temperature,
-			atmosReadings.Pressure)
-		fmt.Printf("Wind speed: %f, Direction: %f, Gust: %f\n", windReadings.Speed, windReadings.Direction,
-			windReadings.Gust)
-		fmt.Printf("Railfall Total: %f\n", rainReadings.Rainfall)
+		err := sp.datastore.Write(WeatherDataRow{
+			Timestamp:       t,
+			AtmosReadings:   atmosReadings,
+			WindReadings:    windReadings,
+			RainReadings:    rainReadings,
+			IntervalSeconds: int(interval.Seconds()),
+		})
+		if err != nil {
+			log.WithError(err).
+				WithField("component", "SensorProducer").
+				WithField("event", "store").
+				Info("failed to write sensor data to store")
+		}
+
+		// fmt.Printf("Humidity: %f, Temperature: %f, Pressure: %f\n", atmosReadings.Humidity, atmosReadings.Temperature,
+		// 	atmosReadings.Pressure)
+		// fmt.Printf("Wind speed: %f, Direction: %f, Gust: %f\n", windReadings.Speed, windReadings.Direction,
+		// 	windReadings.Gust)
+		// fmt.Printf("Railfall Total: %f\n", rainReadings.Rainfall)
 	}
 }
 

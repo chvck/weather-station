@@ -5,6 +5,7 @@ devsetup:
 	GO111MODULE=off go get "github.com/kisielk/errcheck"
 	GO111MODULE=off go get "golang.org/x/lint/golint"
 	GO111MODULE=off go get "github.com/gordonklaus/ineffassign"
+	sudo apt install gcc-arm-linux-gnueabi
 
 checkfmt:
 	! gofmt -l -d -s . 2>&1 | read
@@ -27,9 +28,9 @@ test:
 validate: test checkfmt checkerrs checkvet checkiea checklint
 
 build:
-	env GOOS=linux GOARCH=arm GOARM=7 go build -o weather-station ./cmd/weather_station/
+	env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=7 go build -o weather-station ./cmd/weather_station/
 
 deploy: build
-	scp weather-station ${STNUSER}@${STNHOST}:~/
+	scp -r migrations/ weather-station ${STNUSER}@${STNHOST}:~/
 
 .PHONY: checkfmt checkvet checkiea checkerrs checklint test validate build deploy
