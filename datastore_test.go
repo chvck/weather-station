@@ -1,13 +1,48 @@
 package weatherstn
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"testing"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	tmock "github.com/stretchr/testify/mock"
 )
+
+type MockDataStore struct {
+	tmock.Mock
+}
+
+func (mds *MockDataStore) Write(row WeatherDataRow) error {
+	args := mds.Called(row)
+	return args.Error(0)
+}
+
+func (mds *MockDataStore) UpdatePublished(minTimestamp, maxTimestamp int64) error {
+	args := mds.Called(minTimestamp, maxTimestamp)
+	return args.Error(0)
+}
+
+func loadJSONTestDataset(dataset string, valuePtr interface{}) error {
+	bytes, err := ioutil.ReadFile("testdata/" + dataset + ".json")
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(bytes, &valuePtr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (mds *MockDataStore) ReadUnpublished() ([]WeatherDataRow, error) {
+	args := mds.Called()
+	return args.Get(0).([]WeatherDataRow), args.Error(1)
+}
 
 func newAtmosReadings(temp float64, humidity float64, pressure float64) AtmoshphericReadings {
 	return AtmoshphericReadings{
@@ -39,24 +74,15 @@ func TestSqliteDataStore_Write(t *testing.T) {
 	sqlxDB := sqlx.NewDb(mockDB, "sqlmock")
 	store := NewSqliteDataStore(sqlxDB)
 
-	layout := "2006-01-02T15:04:05.000Z"
-	timeStr := "2020-01-29T11:45:26.371Z"
-	expectedTime, err := time.Parse(layout, timeStr)
+	var row *WeatherDataRow
+	err = loadJSONTestDataset("one_observation", &row)
 	if err != nil {
-		t.Fatalf("unexpected error parsing time string: %v", err)
-	}
-
-	row := WeatherDataRow{
-		Timestamp:       expectedTime,
-		AtmosReadings:   newAtmosReadings(20.2, 998.5, 57.4),
-		WindReadings:    newWindReadings(4.225, 22.5, 5.1),
-		RainReadings:    newRainReadings(0.084),
-		IntervalSeconds: 30,
+		t.Fatalf("unexpected error loading json file: %v", err)
 	}
 
 	mock.ExpectExec("INSERT INTO observations").
 		WithArgs(
-			expectedTime.Unix(),
+			row.Timestamp,
 			row.WindReadings.Speed,
 			row.WindReadings.Direction,
 			row.WindReadings.Gust,
@@ -68,7 +94,7 @@ func TestSqliteDataStore_Write(t *testing.T) {
 		).
 		WillReturnResult(sqlmock.NewResult(5, 1))
 
-	err = store.Write(row)
+	err = store.Write(*row)
 	if err != nil {
 		t.Fatalf("failed to write to data store: %v", err)
 	}

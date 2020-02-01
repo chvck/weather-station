@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -19,7 +20,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const readInterval = 30 * time.Second
+const (
+	readInterval    = 30 * time.Second
+	publishInterval = 60 * time.Second
+)
 
 func init() {
 	// Log as JSON instead of the default ASCII formatter.
@@ -36,60 +40,76 @@ func init() {
 func main() {
 	migrations := flag.Int("migrations", 0, "specifies to run n migrations (can be negative) and then exit")
 	migrateAll := flag.Bool("migrateall", false, "specifies to run all migrations and then exit")
+	configPath := flag.String("config", "config.json", "path to the config file")
 	flag.Parse()
+
+	config := weatherstn.NewAppConfig(*configPath)
+	if err := config.Parse(); err != nil {
+		log.WithError(err).Panic("failed to parse config")
+	}
+
+	log.Info(fmt.Sprintf("Running with config: %#v", config))
 
 	if *migrations != 0 || *migrateAll {
 		if *migrations != 0 && *migrateAll {
 			panic("migrations and migrateall cannot be run together")
 		}
-		err := doMigrate("weather", "migrations", *migrations, *migrateAll)
-		if err != nil {
-			panic(err)
+		if err := doMigrate(config.DatabaseConfig.Path, config.DatabaseConfig.Migrations, *migrations,
+			*migrateAll); err != nil {
+			log.WithError(err).Panic("failed to perform migrations")
 		}
 
 		return
 	}
 
-	atmosProvider := weatherstn.NewBME280SensorProvider(weatherstn.DefaultBME280Addr, weatherstn.DefaultI2CBusDevice)
-	err := atmosProvider.Connect()
-	if err != nil {
+	atmosProvider := weatherstn.NewBME280SensorProvider(weatherstn.BME280SensorProviderConfig{
+		I2cAddr:      config.ProducerConfig.Atmos.I2cAddr,
+		I2cBusDevice: config.ProducerConfig.Atmos.I2cBusDevice,
+	})
+	if err := atmosProvider.Connect(); err != nil {
 		log.WithError(err).Panic("failed to connect to atmospherics provider")
 	}
 
 	windProvider := weatherstn.NewSEN08942WindSensorProvider(weatherstn.SEN08942WindSensorProviderConfig{
-		AnemPinNumber:     5,
-		AnemInterval:      5 * time.Second,
-		VaneCSPinNumber:   8,
-		VaneDOutPinNumber: 9,
-		VaneDInPinNumber:  10,
-		VaneClkPinNumber:  11,
-		VaneChannel:       0,
+		AnemPinNumber:     config.ProducerConfig.Wind.AnemPinNumber,
+		AnemInterval:      config.ProducerConfig.Wind.AnemInterval,
+		VaneCSPinNumber:   config.ProducerConfig.Wind.VaneCSPinNumber,
+		VaneDOutPinNumber: config.ProducerConfig.Wind.VaneDOutPinNumber,
+		VaneDInPinNumber:  config.ProducerConfig.Wind.VaneDInPinNumber,
+		VaneClkPinNumber:  config.ProducerConfig.Wind.VaneClkPinNumber,
+		VaneChannel:       config.ProducerConfig.Wind.VaneChannel,
 	})
-	err = windProvider.Connect()
-	if err != nil {
+	if err := windProvider.Connect(); err != nil {
 		log.WithError(err).Panic("failed to connect to wind provider")
 	}
 
 	rainProvider := weatherstn.NewSEN08942RainSensorProvider(weatherstn.SEN08942RainSensorProviderConfig{
-		PinNumber: 6,
-		Interval:  5 * time.Second,
+		PinNumber: config.ProducerConfig.Rain.PinNumber,
+		Interval:  config.ProducerConfig.Rain.Interval,
 	})
-	err = rainProvider.Connect()
-	if err != nil {
+	if err := rainProvider.Connect(); err != nil {
 		log.WithError(err).Panic("failed to connect to rain provider")
 	}
 
-	db, err := sqlx.Open("sqlite3", "weather")
+	db, err := sqlx.Open("sqlite3", config.DatabaseConfig.Path)
 	if err != nil {
 		log.WithError(err).Panic("failed to connect to datastore")
 	}
 
 	datastore := weatherstn.NewSqliteDataStore(db)
+	var wg sync.WaitGroup
 
 	producer := weatherstn.NewSensorProducer(atmosProvider, windProvider, rainProvider, datastore)
 	go func() {
-		producer.Run(readInterval)
+		producer.Run(time.Duration(config.ProducerConfig.PollIntervalSecs) * time.Second)
 	}()
+	wg.Add(1)
+
+	publisher := weatherstn.NewPublisher(datastore, config.PublisherConfig.EndpointConfig, &http.Client{})
+	go func() {
+		publisher.Run(time.Duration(config.PublisherConfig.PushIntervalSecs) * time.Second)
+	}()
+	wg.Add(1)
 
 	stopSig := make(chan os.Signal, 1)
 	signal.Notify(stopSig, os.Interrupt)
@@ -97,10 +117,12 @@ func main() {
 
 	<-stopSig
 
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		<-producer.Stop()
+		producer.Stop()
+		wg.Done()
+	}()
+	go func() {
+		publisher.Stop()
 		wg.Done()
 	}()
 

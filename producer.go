@@ -13,7 +13,6 @@ type SensorProducer struct {
 	rainProvider  RainSensorProvider
 	datastore     DataStore
 	stopCh        chan struct{}
-	stoppedCh     chan struct{}
 }
 
 // NewSensorProducer creates and returns a SensorProducer.
@@ -25,7 +24,6 @@ func NewSensorProducer(atmosProvider AtmosphericSensorProvider, windProvider Win
 		rainProvider:  rainProvider,
 		datastore:     store,
 		stopCh:        make(chan struct{}),
-		stoppedCh:     make(chan struct{}),
 	}
 }
 
@@ -56,12 +54,11 @@ func (sp *SensorProducer) Run(interval time.Duration) {
 	for {
 		select {
 		case <-sp.stopCh:
-			sp.stoppedCh <- struct{}{}
 			return
 		case <-time.After(interval):
 		}
 
-		t := time.Now()
+		t := time.Now().Unix()
 		atmosReadings, windReadings, rainReadings := sp.poll()
 
 		err := sp.datastore.Write(WeatherDataRow{
@@ -75,20 +72,13 @@ func (sp *SensorProducer) Run(interval time.Duration) {
 			log.WithError(err).
 				WithField("component", "SensorProducer").
 				WithField("event", "store").
-				Info("failed to write sensor data to store")
+				Error("failed to write sensor data to store")
 		}
-
-		// fmt.Printf("Humidity: %f, Temperature: %f, Pressure: %f\n", atmosReadings.Humidity, atmosReadings.Temperature,
-		// 	atmosReadings.Pressure)
-		// fmt.Printf("Wind speed: %f, Direction: %f, Gust: %f\n", windReadings.Speed, windReadings.Direction,
-		// 	windReadings.Gust)
-		// fmt.Printf("Railfall Total: %f\n", rainReadings.Rainfall)
 	}
 }
 
-// Stop causes the run loop to be halted, returning a channel that is written to when the loop has completed any
-// work.
-func (sp *SensorProducer) Stop() chan struct{} {
+// Stop causes the run loop to be halted, returning once the run loop has completed any work.
+func (sp *SensorProducer) Stop() {
 	sp.stopCh <- struct{}{}
-	return sp.stoppedCh
+	return
 }

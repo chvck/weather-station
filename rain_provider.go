@@ -23,7 +23,7 @@ type RainSensorProvider interface {
 
 // RainReadings are the sensor readings about measurements such as rainfall.
 type RainReadings struct {
-	Rainfall float64 // mm
+	Rainfall float64 `json:"rainfall"` // mm
 }
 
 // SEN08942RainSensorProvider uses the SEN08942 weather kit to provide rain sensor readings.
@@ -45,8 +45,8 @@ type SEN08942RainSensorProvider struct {
 
 // SEN08942RainSensorProviderConfig is used for setup of the SEN08942RainSensorProvider.
 type SEN08942RainSensorProviderConfig struct {
-	PinNumber int
-	Interval  time.Duration
+	PinNumber int           `json:"pin"`
+	Interval  time.Duration `json:"intervalSecs"`
 }
 
 // NewSEN08942RainSensorProvider returns a new SEN08942RainSensorProvider.

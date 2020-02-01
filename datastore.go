@@ -1,8 +1,6 @@
 package weatherstn
 
 import (
-	"time"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jmoiron/sqlx"
@@ -12,17 +10,17 @@ const (
 	stmtInsertDataRow = "INSERT INTO observations (timestamp, wind_speed, wind_direction, wind_gust_speed," +
 		"rainfall, temperature, humidity, pressure, interval_secs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);"
 	queryFetchUnpublishedDataRow = "SELECT timestamp, wind_speed, wind_direction, wind_gust_speed," +
-		"rainfall, temperature, humidity, pressure, interval_secs FROM observations where published=false" +
+		"rainfall, temperature, humidity, pressure, interval_secs FROM observations where published=false " +
 		"ORDER BY timestamp ASC;"
 	stmtUpdateDataRow = "UPDATE observations SET published=true WHERE timestamp BETWEEN ? AND ?;"
 )
 
 // WeatherDataRow is the structure for data passed to and from a DataStore.
 type WeatherDataRow struct {
-	Timestamp       time.Time
-	AtmosReadings   AtmoshphericReadings
-	WindReadings    WindReadings
-	RainReadings    RainReadings
+	Timestamp       int64                `json:"timestamp"`
+	AtmosReadings   AtmoshphericReadings `json:"atmospherics"`
+	WindReadings    WindReadings         `json:"wind"`
+	RainReadings    RainReadings         `json:"rain"`
 	IntervalSeconds int
 }
 
@@ -36,7 +34,6 @@ type weatherDataRow struct {
 	WindGust        float64 `db:"wind_gust_speed"`
 	Rainfall        float64 `db:"rainfall"`
 	IntervalSeconds int     `db:"interval_secs"`
-	Published       bool    `db:"published"`
 }
 
 // DataStore is responsible for persisting and reading data from storage.
@@ -61,7 +58,7 @@ func NewSqliteDataStore(db *sqlx.DB) *SqliteDataStore {
 // Write persists the row to disk.
 func (sds *SqliteDataStore) Write(row WeatherDataRow) error {
 	_, err := sds.db.Exec(stmtInsertDataRow,
-		row.Timestamp.Unix(),
+		row.Timestamp,
 		row.WindReadings.Speed,
 		row.WindReadings.Direction,
 		row.WindReadings.Gust,
@@ -89,7 +86,7 @@ func (sds *SqliteDataStore) ReadUnpublished() ([]WeatherDataRow, error) {
 	var measurements []WeatherDataRow
 	for _, row := range rows {
 		measurements = append(measurements, WeatherDataRow{
-			Timestamp:       time.Unix(row.Timestamp, 0),
+			Timestamp:       row.Timestamp,
 			IntervalSeconds: row.IntervalSeconds,
 			WindReadings: WindReadings{
 				Speed:     row.WindSpeed,

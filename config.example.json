@@ -1,0 +1,36 @@
+{
+  "producer": {
+    "intervalSecs":30,
+    "wind": {
+      "anemPin": 5,
+      "anelIntervalSecs": 5,
+      "vaneClkPin": 11,
+      "vaneCSPin": 8,
+      "vaneDinPin": 10,
+      "vaneDoutPin": 9,
+      "vaneChannel": 0
+    },
+    "rain": {
+      "pin": 6,
+      "intervalSecs": 5
+    },
+    "atmos": {
+      "i2cAddr": 118,
+      "i2cBusDevice": "/dev/i2c-1"
+    }
+  },
+  "publisher": {
+    "intervalSecs": 30,
+    "endpoints": {
+      "host": "SOME_HOST",
+      "sendObservations": {
+        "method": "PUT",
+        "path": "observations"
+      }
+    }
+  },
+  "database": {
+    "path": "./weather",
+    "migrations": "./migrations"
+  }
+}

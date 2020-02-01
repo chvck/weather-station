@@ -58,9 +58,9 @@ type WindSensorProvider interface {
 
 // WindReadings are the sensor readings about measurements such as wind speed.
 type WindReadings struct {
-	Speed     float64 // km/h
-	Direction float32 // degrees
-	Gust      float64 // km/h
+	Speed     float64 `json:"speed"`     // km/h
+	Direction float32 `json:"direction"` // degrees
+	Gust      float64 `json:"gust"`      // km/h
 }
 
 // SEN08942WindSensorProvider uses the SEN08942 weather kit to provide wind sensor readings.
@@ -91,14 +91,14 @@ type SEN08942WindSensorProvider struct {
 
 // SEN08942WindSensorProviderConfig is used for setup of the SEN08942.
 type SEN08942WindSensorProviderConfig struct {
-	AnemPinNumber int
-	AnemInterval  time.Duration
+	AnemPinNumber int           `json:"anemPin"`
+	AnemInterval  time.Duration `json:"anemIntervalSecs"`
 
-	VaneClkPinNumber  int
-	VaneCSPinNumber   int
-	VaneDInPinNumber  int
-	VaneDOutPinNumber int
-	VaneChannel       int
+	VaneClkPinNumber  int `json:"vaneClkPin"`
+	VaneCSPinNumber   int `json:"vaneCSPin"`
+	VaneDInPinNumber  int `json:"vaneDinPin"`
+	VaneDOutPinNumber int `json:"vaneDoutPin"`
+	VaneChannel       int `json:"vaneChannel"`
 }
 
 // NewSEN08942WindSensorProvider returns a new SEN08942WindSensorProvider.

@@ -1,0 +1,17 @@
+{
+  "timestamp": 1580339947,
+  "wind": {
+    "speed": 4.225,
+    "direction": 22.5,
+    "gust": 5.1
+  },
+  "atmospherics": {
+    "temperature": 20.2,
+    "humidity": 57.4,
+    "pressure": 998.5
+  },
+  "rain": {
+    "rainfall": 0.084
+  },
+  "interval_secs": 30
+}
